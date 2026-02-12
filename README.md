@@ -2,9 +2,9 @@
 
 
 <div align="center">
-  <a href="https://github.com/othneildrew/Best-README-Template">
-    <img src="screenshot.png" alt="Screenshot" width="400" >
-  </a>
+  
+    <img src="screenshot.png" alt="Screenshot" width="600" >
+  
 
   <h3 align="center">OSISEditor</h3>
 
