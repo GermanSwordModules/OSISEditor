@@ -313,6 +313,9 @@ object Form1: TForm1
   }
   Menu = MainMenu1
   OnCreate = FormCreate
+  OnCloseQuery = FormCloseQuery
+  OnDestroy = FormDestroy
+  ShowHint = True
   LCLVersion = '2.2.6.0'
   WindowState = wsMaximized
   object StatusBar1: TStatusBar
@@ -970,22 +973,92 @@ object Form1: TForm1
       Caption = 'T'
       OnClick = SpeedButton17Click
     end
+    object SpeedButton18: TSpeedButton
+      Left = 820
+      Height = 22
+      Hint = 'Superscript (hi type="super")'
+      Top = 2
+      Width = 30
+      Caption = 'Sup'
+      Flat = True
+      OnClick = MenuItem43Click
+    end
+    object SpeedButton19: TSpeedButton
+      Left = 850
+      Height = 22
+      Hint = 'Subscript (hi type="sub")'
+      Top = 2
+      Width = 30
+      Caption = 'Sub'
+      Flat = True
+      OnClick = MenuItem44Click
+    end
+    object SpeedButton20: TSpeedButton
+      Left = 880
+      Height = 22
+      Hint = 'Reference (reference osisRef)'
+      Top = 2
+      Width = 30
+      Caption = 'Ref'
+      Flat = True
+      OnClick = MenuItem45Click
+    end
+    object SpeedButton21: TSpeedButton
+      Left = 910
+      Height = 22
+      Hint = 'Foreign language (foreign xml:lang)'
+      Top = 2
+      Width = 30
+      Caption = 'For'
+      Flat = True
+      OnClick = MenuItem46Click
+    end
+    object ComboBox2: TComboBox
+      Left = 945
+      Height = 25
+      Top = 2
+      Width = 170
+      Hint = 'Modultyp'
+      ItemHeight = 0
+      ItemIndex = 0
+      Items.Strings = (
+        'OSIS Bibel'
+        'OSIS Kommentar'
+        'OSIS Genbook'
+        'TEI W' + #246 + 'rterbuch'
+      )
+      OnChange = ComboBox2Change
+      TabOrder = 5
+      Text = 'OSIS Bibel'
+    end
   end
-  inline SynEdit1: TSynEdit
+  object PageControl1: TPageControl
     Left = 256
     Height = 603
     Top = 32
     Width = 366
     Align = alClient
-    Font.Height = -21
-    Font.Name = 'DejaVu Sans Mono'
-    Font.Pitch = fpFixed
-    Font.Quality = fqNonAntialiased
-    ParentColor = False
-    ParentFont = False
+    Options = [nboShowCloseButtons]
     TabOrder = 2
-    OnKeyDown = SynEdit1KeyDown
-    OnMouseUp = SynEdit1MouseUp
+    OnChange = PageControl1Change
+    OnCloseTabClicked = PageControl1CloseTabClicked
+    object TabSheet1: TTabSheet
+      Caption = 'neue Datei'
+      inline SynEdit1: TSynEdit
+        Left = 0
+        Height = 580
+        Top = 0
+        Width = 366
+        Align = alClient
+        Font.Height = -21
+        Font.Name = 'DejaVu Sans Mono'
+        Font.Pitch = fpFixed
+        Font.Quality = fqNonAntialiased
+        ParentColor = False
+        ParentFont = False
+        OnKeyDown = SynEdit1KeyDown
+        OnMouseUp = SynEdit1MouseUp
+        OnStatusChange = SynEditStatusChange
     Gutter.Width = 67
     Gutter.MouseActions = <>
     RightGutter.Width = 0
@@ -1473,6 +1546,8 @@ object Form1: TForm1
         MouseActionsCollapsed = <>
       end
     end
+      end
+    end
   end
   object Panel1: TPanel
     Left = 0
@@ -1503,26 +1578,16 @@ object Form1: TForm1
       ParentColor = False
       Visible = False
     end
-    object ListBox1: TListBox
+    object TreeView1: TTreeView
       Left = 1
       Height = 551
       Top = 27
       Width = 249
       Align = alTop
-      ItemHeight = 0
-      OnClick = ListBox1Click
+      ReadOnly = True
+      RowSelect = True
+      OnSelectionChanged = TreeView1SelectionChanged
       TabOrder = 1
-      TopIndex = -1
-    end
-    object ListBox2: TListBox
-      Left = 112
-      Height = 80
-      Top = 456
-      Width = 100
-      ItemHeight = 0
-      TabOrder = 2
-      TopIndex = -1
-      Visible = False
     end
     object ToolBar2: TToolBar
       Left = 1
@@ -1530,7 +1595,7 @@ object Form1: TForm1
       Top = 1
       Width = 249
       Caption = 'ToolBar2'
-      TabOrder = 3
+      TabOrder = 2
       object SpeedButton9: TSpeedButton
         Left = 1
         Height = 28
@@ -1641,14 +1706,16 @@ object Form1: TForm1
     object MenuItem1: TMenuItem
       Caption = '&Datei'
       object MenuItem22: TMenuItem
-        Caption = 'Neu'
+        Caption = 'Neues Tab'
         ShortCut = 16462
+        OnClick = MenuItem22Click
       end
       object Separator6: TMenuItem
         Caption = '-'
       end
       object MenuItem2: TMenuItem
         Caption = 'Ö&ffnen'
+        Hint = 'Datei in neuem Tab öffnen.'
         ShortCut = 16463
         OnClick = MenuItem2Click
       end
@@ -1661,11 +1728,23 @@ object Form1: TForm1
         Caption = 'Speichern unter...'
         OnClick = MenuItem24Click
       end
+      object MenuItem75: TMenuItem
+        Caption = 'Tab schlie' + #223 + 'en'
+        ShortCut = 16503
+        OnClick = MenuItem75Click
+      end
       object Separator1: TMenuItem
+        Caption = '-'
+      end
+      object MenuItem74: TMenuItem
+        Caption = 'Zuletzt ge' + #246 + 'ffnet'
+      end
+      object Separator12: TMenuItem
         Caption = '-'
       end
       object MenuItem4: TMenuItem
         Caption = 'Beenden'
+        OnClick = MenuItem4Click
         ShortCut = 16465
       end
     end
@@ -1673,9 +1752,14 @@ object Form1: TForm1
       Caption = 'B&earbeiten'
       object MenuItem5: TMenuItem
         Caption = 'Rückgängig'
+        OnClick = MenuItem5Click
       end
       object MenuItem6: TMenuItem
         Caption = 'Wiederholen'
+        OnClick = MenuItem6Click
+      end
+      object MenuItem77: TMenuItem
+        Caption = 'Änderungsverlauf'
       end
       object Separator2: TMenuItem
         Caption = '-'
@@ -1767,6 +1851,10 @@ object Form1: TForm1
         ShortCutKey2 = 16436
         OnClick = MenuItem41Click
       end
+      object MenuItem48: TMenuItem
+        Caption = 'bookGroup'
+        OnClick = MenuItem48Click
+      end
     end
     object MenuItem19: TMenuItem
       Caption = 'Kommentar'
@@ -1793,11 +1881,13 @@ object Form1: TForm1
       Caption = 'Format'
       object MenuItem25: TMenuItem
         Caption = 'Fett'
+        Hint = '<hi type="bold"> — Fettdruck. OSIS Inline-Formatierung.'
         ShortCut = 16450
         OnClick = MenuItem25Click
       end
       object MenuItem26: TMenuItem
         Caption = 'Kursiv'
+        Hint = '<hi type="italic"> — Kursivschrift. OSIS Inline-Formatierung.'
         ShortCut = 16457
         OnClick = MenuItem26Click
       end
@@ -1806,16 +1896,19 @@ object Form1: TForm1
       end
       object MenuItem27: TMenuItem
         Caption = 'Paragraph'
+        Hint = '<p> — Absatz. Umschlie' + #223 + 't Text mit <p>...</p>.'
         ShortCut = 16464
         OnClick = MenuItem27Click
       end
       object MenuItem28: TMenuItem
         Caption = 'Paragraph Break'
+        Hint = 'F' + #252 + 'gt </p><p> ein — Absatztrenner ohne Textselektion.'
         ShortCut = 8205
         OnClick = MenuItem28Click
       end
       object MenuItem32: TMenuItem
         Caption = 'Div-Break'
+        Hint = 'F' + #252 + 'gt neues Kommentar-Div ein: </p></div><div annotateRef=""><p>.'
         ShortCut = 24589
         OnClick = MenuItem32Click
       end
@@ -1824,21 +1917,156 @@ object Form1: TForm1
       end
       object MenuItem29: TMenuItem
         Caption = 'Abbildung'
+        Hint = '<figure src=""> — Bild einbetten. src= enthaelt den Dateipfad des Bildes.'
         ShortCut = 16461
         OnClick = MenuItem29Click
       end
       object MenuItem30: TMenuItem
         Caption = 'Fußnote'
+        Hint = '<note placement="foot"> — Fußnote. Inhalt erscheint am Seitenende.'
         ShortCut = 24654
         OnClick = MenuItem30Click
       end
+      object MenuItem47: TMenuItem
+        Caption = 'Endnote'
+        Hint = '<note type="x-endnote"> — Endnote. Erscheint am Kapitel- oder Buchende.'
+        OnClick = MenuItem47Click
+      end
       object Separator10: TMenuItem
         Caption = '-'
+      end
+      object MenuItem43: TMenuItem
+        Caption = 'Hochgestellt (super)'
+        Hint = '<hi type="super"> — Hochgestellter Text (Superscript). Z.B. Fußnotenziffern, Potenzen.'
+        OnClick = MenuItem43Click
+      end
+      object MenuItem44: TMenuItem
+        Caption = 'Tiefgestellt (sub)'
+        Hint = '<hi type="sub"> — Tiefgestellter Text (Subscript). Z.B. chemische Formeln.'
+        OnClick = MenuItem44Click
+      end
+      object MenuItem45: TMenuItem
+        Caption = 'Referenz'
+        Hint = '<reference osisRef=""> — Querverweis. osisRef im Format Buch.Kap.Vers (z.B. Gen.1.1). Nutze "Referenzen konvertieren" f' + #252 + 'r Massenkonvertierung.'
+        OnClick = MenuItem45Click
+      end
+      object MenuItem46: TMenuItem
+        Caption = 'Fremdsprache'
+        Hint = '<foreign xml:lang=""> — Marks text in a foreign language. Set xml:lang to ISO language code (e.g., "he", "grc", "la").'
+        OnClick = MenuItem46Click
+      end
+      object MenuItem64: TMenuItem
+        Caption = 'Bibelreferenzen konvertieren'
+        Hint = 'Wandelt Bibelreferenzen im markierten Text in <reference osisRef="..."> Tags um (z.B. "Gen 1:1", "1. Mose 1,1", "Johannes 3,16").'
+        OnClick = MenuItem64Click
       end
       object MenuItem36: TMenuItem
         Caption = 'Remove p-break '
         ShortCut = 16461
         OnClick = SpeedButton8Click
+      end
+    end
+    object MenuItem49: TMenuItem
+      Caption = 'Bibel'
+      Visible = False
+      object MenuItem50: TMenuItem
+        Caption = 'Vers (sID/eID)'
+        Hint = '<verse sID=""/> ... <verse eID=""/> — Versbegrenzer-Paar (Milestone-Stil). sID/eID = Buch.Kap.Vers (z.B. Gen.1.1).'
+        OnClick = MenuItem50Click
+      end
+      object MenuItem51: TMenuItem
+        Caption = 'Wort (w)'
+        Hint = '<w lemma="" morph=""> — Einzelwort mit Lemma (Strongs-Nr., z.B. H1234) und Morphologie-Code.'
+        OnClick = MenuItem51Click
+      end
+      object MenuItem52: TMenuItem
+        Caption = 'Verslinie (lg/l)'
+        Hint = '<lg><l level="1"> — Verszeile (line group / line). F' + #252 + 'r poetische Texte.'
+        OnClick = MenuItem52Click
+      end
+      object MenuItem53: TMenuItem
+        Caption = 'Zitat (q)'
+        Hint = '<q who="" level=""> — Wörtliches Zitat. who= Sprecher, level= Verschachtelungstiefe (1,2,...).'
+        OnClick = MenuItem53Click
+      end
+    end
+    object MenuItem54: TMenuItem
+      Caption = 'W' + #246 + 'rterbuch'
+      Visible = False
+      object MenuItem55: TMenuItem
+        Caption = 'Eintrag (entryFree)'
+        Hint = '<entryFree sortKey="" n=""> — W' + #246 + 'rterbucheintrag. sortKey= Sortierschl' + #252 + 'ssel, n= Eintragsnummer.'
+        OnClick = MenuItem55Click
+      end
+      object MenuItem56: TMenuItem
+        Caption = 'Bedeutung (sense)'
+        Hint = '<sense n=""> — Bedeutung eines Eintrags. n= Nummerierung der Bedeutung.'
+        OnClick = MenuItem56Click
+      end
+      object MenuItem57: TMenuItem
+        Caption = 'Definition (def)'
+        Hint = '<def> — Definitionstext innerhalb einer Bedeutung (sense).'
+        OnClick = MenuItem57Click
+      end
+      object MenuItem58: TMenuItem
+        Caption = 'Schreibung (orth)'
+        Hint = '<orth> — Orthografische Form des Stichwortes (Lemma-Schreibung).'
+        OnClick = MenuItem58Click
+      end
+      object MenuItem59: TMenuItem
+        Caption = 'Verweis (ref)'
+        Hint = '<ref osisRef=""> — Verweis auf eine Bibelstelle. osisRef im OSIS-Format (z.B. Gen.1.1).'
+        OnClick = MenuItem59Click
+      end
+      object MenuItem60: TMenuItem
+        Caption = 'Querverweis (xr)'
+        Hint = '<xr type="see"> — Querverweis auf andere W' + #246 + 'rterbucheintr' + #228 + 'ge (type: see, cf, ...).'
+        OnClick = MenuItem60Click
+      end
+      object MenuItem61: TMenuItem
+        Caption = 'Hervorhebung (emph)'
+        Hint = '<emph> — Hervorhebung/Betonung innerhalb des Eintrags.'
+        OnClick = MenuItem61Click
+      end
+    end
+    object MenuItem62: TMenuItem
+      Caption = 'Werkzeuge'
+      object MenuItem63: TMenuItem
+        Caption = 'Metadaten...'
+        Hint = 'OSIS/TEI Metadaten bearbeiten und XML-Kopf-Vorlage einf' + #252 + 'gen.'
+        OnClick = MenuItem63Click
+      end
+      object Separator11: TMenuItem
+        Caption = '-'
+      end
+      object MenuItem65: TMenuItem
+        Caption = 'Bauen mit osis2mod...'
+        Hint = 'F' + #252 + 'hrt osis2mod aus, um eine SWORD-Bibel/Kommentar/Genbook-Modul zu erstellen. Ausgabe erscheint rechts.'
+        OnClick = MenuItem65Click
+      end
+      object MenuItem66: TMenuItem
+        Caption = 'Bauen mit tei2mod...'
+        Hint = 'F' + #252 + 'hrt tei2mod aus, um ein SWORD-W' + #246 + 'rterbuch-Modul zu erstellen. Ausgabe erscheint rechts.'
+        OnClick = MenuItem66Click
+      end
+      object MenuItem67: TMenuItem
+        Caption = 'SWORD .conf ' + #246 + 'ffnen...'
+        Hint = '.conf Moduldatei laden und rechts bearbeiten (INI-Format mit [Modulname] und Key=Value Eintr' + #228 + 'gen).'
+        OnClick = MenuItem67Click
+      end
+      object MenuItem68: TMenuItem
+        Caption = 'SWORD .conf speichern'
+        Enabled = False
+        Hint = 'Die aktuell ge' + #246 + 'ffnete .conf Datei speichern.'
+        OnClick = MenuItem68Click
+      end
+      object Separator13: TMenuItem
+        Caption = '-'
+      end
+      object MenuItem76: TMenuItem
+        Caption = 'Einstellungen...'
+        Hint = 'Sprache und weitere Einstellungen.'
+        OnClick = MenuItem76Click
       end
     end
     object MenuItem21: TMenuItem

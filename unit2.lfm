@@ -1,0 +1,256 @@
+object Form2: TForm2
+  Left = 300
+  Height = 458
+  Top = 200
+  Width = 490
+  BorderStyle = bsDialog
+  Caption = 'Metadaten bearbeiten'
+  ClientHeight = 430
+  ClientWidth = 490
+  Position = poMainFormCenter
+  LCLVersion = '2.2.6.0'
+  object GroupBox1: TGroupBox
+    Left = 8
+    Height = 120
+    Top = 8
+    Width = 466
+    Caption = 'Modultyp'
+    TabOrder = 0
+    object rbBible: TRadioButton
+      Left = 12
+      Height = 20
+      Top = 20
+      Width = 200
+      Caption = 'OSIS Bibel'
+      Checked = True
+      OnClick = rbTypeClick
+      TabOrder = 0
+    end
+    object rbCommentary: TRadioButton
+      Left = 12
+      Height = 20
+      Top = 44
+      Width = 200
+      Caption = 'OSIS Kommentar'
+      OnClick = rbTypeClick
+      TabOrder = 1
+    end
+    object rbGenbook: TRadioButton
+      Left = 12
+      Height = 20
+      Top = 68
+      Width = 200
+      Caption = 'OSIS Genbook'
+      OnClick = rbTypeClick
+      TabOrder = 2
+    end
+    object rbDictionary: TRadioButton
+      Left = 12
+      Height = 20
+      Top = 92
+      Width = 200
+      Caption = 'TEI W' + #246 + 'rterbuch'
+      OnClick = rbTypeClick
+      TabOrder = 3
+    end
+  end
+  object GroupBox2: TGroupBox
+    Left = 8
+    Height = 240
+    Top = 136
+    Width = 466
+    Caption = 'OSIS Metadaten'
+    TabOrder = 1
+    object Label1: TLabel
+      Left = 8
+      Height = 18
+      Top = 26
+      Width = 90
+      Caption = 'Work ID:'
+    end
+    object edWorkID: TEdit
+      Left = 108
+      Height = 23
+      Top = 22
+      Width = 346
+      TabOrder = 0
+    end
+    object Label2: TLabel
+      Left = 8
+      Height = 18
+      Top = 54
+      Width = 90
+      Caption = 'Sprache:'
+    end
+    object edLanguage: TEdit
+      Left = 108
+      Height = 23
+      Top = 50
+      Width = 120
+      Text = 'de'
+      TabOrder = 1
+    end
+    object Label3: TLabel
+      Left = 8
+      Height = 18
+      Top = 82
+      Width = 90
+      Caption = 'Titel:'
+    end
+    object edTitle: TEdit
+      Left = 108
+      Height = 23
+      Top = 78
+      Width = 346
+      TabOrder = 2
+    end
+    object Label4: TLabel
+      Left = 8
+      Height = 18
+      Top = 110
+      Width = 90
+      Caption = 'Autor:'
+    end
+    object edCreator: TEdit
+      Left = 108
+      Height = 23
+      Top = 106
+      Width = 346
+      TabOrder = 3
+    end
+    object Label5: TLabel
+      Left = 8
+      Height = 18
+      Top = 138
+      Width = 90
+      Caption = 'Ref-System:'
+    end
+    object edRefSystem: TEdit
+      Left = 108
+      Height = 23
+      Top = 134
+      Width = 200
+      Text = 'Bible'
+      TabOrder = 4
+    end
+    object Label6: TLabel
+      Left = 8
+      Height = 18
+      Top = 166
+      Width = 90
+      Caption = 'osisRefWork:'
+    end
+    object edRefWork: TEdit
+      Left = 108
+      Height = 23
+      Top = 162
+      Width = 200
+      ReadOnly = True
+      TabOrder = 5
+    end
+    object Label7: TLabel
+      Left = 8
+      Height = 16
+      Top = 196
+      Width = 440
+      Caption = '(osisRefWork wird automatisch aus dem Modultyp gesetzt)'
+      Font.Height = -10
+      ParentFont = False
+    end
+  end
+  object GroupBox3: TGroupBox
+    Left = 8
+    Height = 180
+    Top = 136
+    Width = 466
+    Caption = 'TEI Metadaten'
+    TabOrder = 2
+    Visible = False
+    object Label8: TLabel
+      Left = 8
+      Height = 18
+      Top = 26
+      Width = 90
+      Caption = 'Titel:'
+    end
+    object edTeiTitle: TEdit
+      Left = 108
+      Height = 23
+      Top = 22
+      Width = 346
+      TabOrder = 0
+    end
+    object Label9: TLabel
+      Left = 8
+      Height = 18
+      Top = 54
+      Width = 90
+      Caption = 'Sprache:'
+    end
+    object edTeiLang: TEdit
+      Left = 108
+      Height = 23
+      Top = 50
+      Width = 120
+      Text = 'de'
+      TabOrder = 1
+    end
+    object Label10: TLabel
+      Left = 8
+      Height = 18
+      Top = 82
+      Width = 90
+      Caption = 'Verlag:'
+    end
+    object edTeiPublisher: TEdit
+      Left = 108
+      Height = 23
+      Top = 78
+      Width = 346
+      TabOrder = 2
+    end
+    object Label11: TLabel
+      Left = 8
+      Height = 18
+      Top = 110
+      Width = 90
+      Caption = 'Quelle:'
+    end
+    object edTeiSource: TEdit
+      Left = 108
+      Height = 23
+      Top = 106
+      Width = 346
+      TabOrder = 3
+    end
+  end
+  object btnInsertTemplate: TButton
+    Left = 8
+    Height = 30
+    Top = 390
+    Width = 160
+    Caption = 'Vorlage einf' + #252 + 'gen'
+    ModalResult = 6
+    TabOrder = 3
+  end
+  object btnOK: TButton
+    Left = 296
+    Height = 30
+    Top = 390
+    Width = 80
+    Caption = 'OK'
+    Default = True
+    ModalResult = 1
+    TabOrder = 4
+  end
+  object btnCancel: TButton
+    Left = 392
+    Height = 30
+    Top = 390
+    Width = 80
+    Caption = 'Abbrechen'
+    Cancel = True
+    ModalResult = 2
+    TabOrder = 5
+  end
+end
