@@ -42,7 +42,7 @@ For other OS: Build from source using Lazarus.
   <p align="center">
     v. 0.1
   </p>
-<img src="screenshot2.png" alt="Screenshot" width="600">
+<img src="screenshot.png" alt="Screenshot" width="600">
   
 
 </div>
