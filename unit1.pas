@@ -8,7 +8,7 @@ uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, ComCtrls,
   Buttons, StdCtrls, Menus, SynHighlighterXML, SynEdit, SynEditWrappedView,
   SynEditTypes, Clipbrd, Spin, BGRASpeedButton, BCTrackbarUpdown,
-  Unit2, Unit3, Process, IniFiles;
+  ShellCtrls, Unit2, Unit3, Process, IniFiles;
 
 type
 
@@ -224,19 +224,23 @@ type
     { Mini selection toolbar }
     MiniBar         : TPanel;
     { File browser }
-    FileList        : TListView;
-    FilePreviewImg  : TImage;
-    FilePanelMenu   : TPopupMenu;
-    ShowAllFiles    : boolean;
-    HomePath        : string;
+    FileBrowserPanel : TPanel;
+    FileTree         : TShellListView;
+    FilePreviewImg   : TImage;
+    FilePanelMenu    : TPopupMenu;
+    FileFilterCombo  : TComboBox;
+    HomePath         : string;
     { Right panel toggle }
     RightToggleStrip: TPanel;
     RightToggleBtn  : TSpeedButton;
     { Hover image popup }
-    HoverPopup      : TPanel;
-    HoverImage      : TImage;
-    HoverLastLine   : integer;
-    HoverLastSyn    : TSynEdit;
+    HoverPopup        : TPanel;
+    HoverImage        : TImage;
+    HoverLastLine     : integer;
+    HoverLastSyn      : TSynEdit;
+    HoverTimer        : TTimer;
+    HoverPendingPath  : string;
+    HoverPendingPt    : TPoint;
     procedure ShowMiniBar(const screenPt: TPoint);
     procedure HideMiniBar;
     procedure MiniBarActionClick(Sender: TObject);
@@ -278,19 +282,21 @@ type
     procedure PopupRedoClick(Sender: TObject);
     procedure PopupFindClick(Sender: TObject);
     procedure RebuildFileList;
-    procedure FileListClick(Sender: TObject);
+    procedure FileTreeSelChange(Sender: TObject; Item: TListItem; Selected: Boolean);
     procedure FileListDblClick(Sender: TObject);
+    procedure FileTreeHomeClick(Sender: TObject);
+    procedure FileTreeUpClick(Sender: TObject);
+    procedure FilterComboChange(Sender: TObject);
     procedure FileInsertWithP(Sender: TObject);
     procedure FileInsertWithoutP(Sender: TObject);
     procedure ToggleRightPanel(Sender: TObject);
-    procedure ToggleFileFilterClick(Sender: TObject);
     procedure SynEditMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
+    procedure HoverTimerTick(Sender: TObject);
     procedure SynEditDragOver(Sender, Source: TObject; X, Y: Integer;
       State: TDragState; var Accept: Boolean);
     procedure SynEditDragDrop(Sender, Source: TObject; X, Y: Integer);
     procedure TreeExpandAllClick(Sender: TObject);
     procedure TreeCollapseAllClick(Sender: TObject);
-    function  GetListItemPath(item: TListItem): string;
     function  IsImageFile(const fn: string): boolean;
     procedure InsertFigureFromFile(const fn: string; withP: boolean);
   public
@@ -783,14 +789,11 @@ var langCode: string; cfgFile: string;
     il: TImageList; bmp: TBitmap;
     ini: TIniFile; mi: TMenuItem;
     btn: TSpeedButton; bx: integer;
-    { new component local vars }
     tvBtnA, tvBtnB: TSpeedButton;
     pmOCR: TMenuItem;
-    ftIL: TImageList; ftBmp: TBitmap;
     fmi: TMenuItem;
     fpSpl, fbMid: TSplitter;
-    ftHdr: TPanel;
-    filterBtn: TSpeedButton;
+    ftHdr, insBar: TPanel;
 begin
   { language + font size — read from INI file }
   LangData := TStringList.Create;
@@ -1016,114 +1019,110 @@ begin
   ToolBar2.Align  := alTop;
   TreeView1.Align := alClient;
 
-  { Icons for the file list: 0=plain file, 1=image file }
-  ftIL := TImageList.Create(Self);
-  ftIL.Width := 16; ftIL.Height := 16;
-  ftBmp := TBitmap.Create;
-  try
-    ftBmp.Width := 16; ftBmp.Height := 16;
-    ftBmp.PixelFormat := pf24bit;
-    { icon 0: plain document (light green) }
-    ftBmp.Canvas.Brush.Color := clFuchsia;
-    ftBmp.Canvas.FillRect(Rect(0, 0, 16, 16));
-    ftBmp.Canvas.Brush.Color := $88FF88;
-    ftBmp.Canvas.Pen.Color   := $005500;
-    ftBmp.Canvas.FillRect(Rect(2, 1, 13, 14));
-    ftBmp.Canvas.Brush.Color := clFuchsia;
-    ftBmp.Canvas.FillRect(Rect(10, 1, 13, 4));
-    ftBmp.Transparent := True;
-    ftIL.AddMasked(ftBmp, clFuchsia);
-    { icon 1: image file (orange with landscape) }
-    ftBmp.Canvas.Brush.Color := clFuchsia;
-    ftBmp.Canvas.FillRect(Rect(0, 0, 16, 16));
-    ftBmp.Canvas.Brush.Color := $FFE0A0;
-    ftBmp.Canvas.Pen.Color   := $CC6600;
-    ftBmp.Canvas.FillRect(Rect(2, 1, 13, 14));
-    ftBmp.Canvas.Brush.Color := clFuchsia;
-    ftBmp.Canvas.FillRect(Rect(10, 1, 13, 4));
-    ftBmp.Canvas.Brush.Color := $88CCFF;
-    ftBmp.Canvas.Pen.Color   := $0055AA;
-    ftBmp.Canvas.Ellipse(3, 3, 7, 7);
-    ftBmp.Canvas.Brush.Color := $44AA44;
-    ftBmp.Canvas.Pen.Color   := $005500;
-    ftBmp.Canvas.Polygon([Point(3,13),Point(6,9),Point(9,11),Point(12,7),Point(12,13)]);
-    ftBmp.Transparent := True;
-    ftIL.AddMasked(ftBmp, clFuchsia);
-  finally
-    ftBmp.Free;
-  end;
-
   { File browser popup menu }
   FilePanelMenu := TPopupMenu.Create(Self);
   fmi := TMenuItem.Create(FilePanelMenu);
-  fmi.Caption := 'Einfügen mit <p>';
+  fmi.Caption := 'Einf' + #252 + 'gen mit <p>';
   fmi.OnClick := @FileInsertWithP;
   FilePanelMenu.Items.Add(fmi);
   fmi := TMenuItem.Create(FilePanelMenu);
-  fmi.Caption := 'Einfügen ohne <p>';
+  fmi.Caption := 'Einf' + #252 + 'gen ohne <p>';
   fmi.OnClick := @FileInsertWithoutP;
   FilePanelMenu.Items.Add(fmi);
 
-  { Creation order determines visual stacking (alBottom = first created = absolute bottom).
-    Desired top→bottom: [separator] [filter bar] [file list] [splitter] [preview] }
+  { LCL alBottom layout: LAST created control in a parent = bottommost visual position.
+    For Panel1: create fbMid first (ends up just below TreeView1),
+    FileBrowserPanel second (ends up at absolute bottom). }
 
-  { 1. Image preview — very bottom }
-  FilePreviewImg := TImage.Create(Panel1);
-  FilePreviewImg.Parent       := Panel1;
-  FilePreviewImg.Align        := alBottom;
-  FilePreviewImg.Height       := 120;
-  FilePreviewImg.Proportional := True;
-  FilePreviewImg.Stretch      := True;
-
-  { 2. Splitter between preview and file list }
-  fpSpl := TSplitter.Create(Panel1);
-  fpSpl.Parent       := Panel1;
-  fpSpl.Align        := alBottom;
-  fpSpl.Height       := 4;
-  fpSpl.ResizeAnchor := akBottom;
-
-  { 3. File list (TListView, report mode) }
-  FileList := TListView.Create(Panel1);
-  FileList.Parent      := Panel1;
-  FileList.Align       := alBottom;
-  FileList.Height      := 180;
-  FileList.ViewStyle   := vsReport;
-  FileList.ReadOnly    := True;
-  FileList.RowSelect   := True;
-  FileList.GridLines   := True;
-  FileList.SmallImages := ftIL;
-  FileList.PopupMenu   := FilePanelMenu;
-  FileList.OnClick     := @FileListClick;
-  FileList.OnDblClick  := @FileListDblClick;
-  FileList.DragMode    := dmAutomatic;
-  with FileList.Columns.Add do begin Caption := 'Dateiname'; Width := 140; end;
-  with FileList.Columns.Add do begin Caption := 'Verzeichnis'; Width := 100; end;
-  with FileList.Columns.Add do begin Caption := 'Typ'; Width := 46; end;
-
-  { 4. Filter bar — above file list, acts as its header toolbar }
-  ftHdr := TPanel.Create(Panel1);
-  ftHdr.Parent     := Panel1;
-  ftHdr.Align      := alBottom;
-  ftHdr.Height     := 26;
-  ftHdr.BevelOuter := bvNone;
-  filterBtn := TSpeedButton.Create(ftHdr);
-  filterBtn.Parent     := ftHdr;
-  filterBtn.Left       := 0; filterBtn.Top := 1;
-  filterBtn.Width      := 48; filterBtn.Height := 24;
-  filterBtn.Caption    := 'Alle';
-  filterBtn.Flat       := True;
-  filterBtn.AllowAllUp := True;
-  filterBtn.GroupIndex := 11;
-  filterBtn.Hint       := 'Alle Dateien / Nur Bilder';
-  filterBtn.ShowHint   := True;
-  filterBtn.OnClick    := @ToggleFileFilterClick;
-
-  { 5. Separator between index TreeView1 and file browser section }
   fbMid := TSplitter.Create(Panel1);
   fbMid.Parent       := Panel1;
   fbMid.Align        := alBottom;
   fbMid.Height       := 4;
   fbMid.ResizeAnchor := akBottom;
+
+  FileBrowserPanel := TPanel.Create(Panel1);
+  FileBrowserPanel.Parent     := Panel1;
+  FileBrowserPanel.Align      := alBottom;
+  FileBrowserPanel.Height     := 340;
+  FileBrowserPanel.BevelOuter := bvNone;
+
+  { ── Inside FileBrowserPanel ──
+    alTop controls are placed top-down in creation order.
+    alBottom: last created = very bottom.
+    alClient fills whatever space is left in the middle.
+    Order: create fpSpl FIRST, FilePreviewImg SECOND so preview ends at absolute bottom. }
+
+  { A. Filter + navigation bar (alTop) }
+  ftHdr := TPanel.Create(FileBrowserPanel);
+  ftHdr.Parent     := FileBrowserPanel;
+  ftHdr.Align      := alTop;
+  ftHdr.Height     := 28;
+  ftHdr.BevelOuter := bvNone;
+
+  FileFilterCombo := TComboBox.Create(ftHdr);
+  FileFilterCombo.Parent    := ftHdr;
+  FileFilterCombo.Style     := csDropDownList;
+  FileFilterCombo.Left      := 2; FileFilterCombo.Top := 2;
+  FileFilterCombo.Width     := 150; FileFilterCombo.Height := 24;
+  FileFilterCombo.Items.Add('Bilder (PNG, JPG, ...)');
+  FileFilterCombo.Items.Add('Alle Dateien (*.*)');
+  FileFilterCombo.Items.Add('XML-Dateien (*.xml)');
+  FileFilterCombo.ItemIndex := 0;
+  FileFilterCombo.OnChange  := @FilterComboChange;
+
+  btn := TSpeedButton.Create(ftHdr);
+  btn.Parent := ftHdr; btn.Left := 156; btn.Top := 2;
+  btn.Width := 28; btn.Height := 24;
+  btn.Caption := '..'; btn.Flat := True;
+  btn.Hint := 'Einen Ordner nach oben'; btn.ShowHint := True;
+  btn.OnClick := @FileTreeUpClick;
+
+  btn := TSpeedButton.Create(ftHdr);
+  btn.Parent := ftHdr; btn.Left := 188; btn.Top := 2;
+  btn.Width := 28; btn.Height := 24;
+  btn.Caption := 'H'; btn.Flat := True;
+  btn.Hint := 'Zum Projektverzeichnis'; btn.ShowHint := True;
+  btn.OnClick := @FileTreeHomeClick;
+
+  { B. Insert buttons (alTop) }
+  insBar := TPanel.Create(FileBrowserPanel);
+  insBar.Parent := FileBrowserPanel; insBar.Align := alTop;
+  insBar.Height := 28; insBar.BevelOuter := bvNone;
+
+  btn := TSpeedButton.Create(insBar);
+  btn.Parent := insBar; btn.Align := alLeft;
+  btn.Width := 120; btn.Caption := 'Einf' + #252 + 'gen mit <p>';
+  btn.Flat := True; btn.OnClick := @FileInsertWithP;
+
+  btn := TSpeedButton.Create(insBar);
+  btn.Parent := insBar; btn.Align := alLeft;
+  btn.Width := 124; btn.Caption := 'Einf' + #252 + 'gen ohne <p>';
+  btn.Flat := True; btn.OnClick := @FileInsertWithoutP;
+
+  { C. Preview splitter — first alBottom inside FileBrowserPanel }
+  fpSpl := TSplitter.Create(FileBrowserPanel);
+  fpSpl.Parent := FileBrowserPanel; fpSpl.Align := alBottom;
+  fpSpl.Height := 4; fpSpl.ResizeAnchor := akBottom;
+
+  { D. Image preview — second (last) alBottom = very bottom of FileBrowserPanel }
+  FilePreviewImg := TImage.Create(FileBrowserPanel);
+  FilePreviewImg.Parent       := FileBrowserPanel;
+  FilePreviewImg.Align        := alBottom;
+  FilePreviewImg.Height       := 100;
+  FilePreviewImg.Proportional := True;
+  FilePreviewImg.Stretch      := True;
+
+  { E. Shell list — alClient, fills remaining middle space }
+  FileTree := TShellListView.Create(FileBrowserPanel);
+  FileTree.Parent       := FileBrowserPanel;
+  FileTree.Align        := alClient;
+  FileTree.ObjectTypes  := [otFolders, otNonFolders];
+  FileTree.Mask         := '*.jpg;*.jpeg;*.png;*.gif;*.bmp;*.tif;*.tiff;*.webp';
+  FileTree.ViewStyle    := vsReport;
+  FileTree.PopupMenu    := FilePanelMenu;
+  FileTree.OnSelectItem := @FileTreeSelChange;
+  FileTree.OnDblClick   := @FileListDblClick;
+  FileTree.DragMode     := dmAutomatic;
 
   { ── Hover image popup ── }
   HoverPopup := TPanel.Create(Self);
@@ -1139,10 +1138,15 @@ begin
   HoverImage.Proportional := True;
   HoverImage.Stretch     := True;
 
-  HoverLastLine := -1;
-  HoverLastSyn  := nil;
-  ShowAllFiles  := False;
-  HomePath      := '';
+  HoverLastLine    := -1;
+  HoverLastSyn     := nil;
+  HoverPendingPath := '';
+  HomePath         := '';
+
+  HoverTimer          := TTimer.Create(Self);
+  HoverTimer.Interval := 350;
+  HoverTimer.Enabled  := False;
+  HoverTimer.OnTimer  := @HoverTimerTick;
 end;
 
 procedure TForm1.FormDestroy(Sender: TObject);
@@ -2287,84 +2291,27 @@ begin
             (ext = '.gif') or (ext = '.bmp') or (ext = '.tif') or (ext = '.tiff');
 end;
 
-{ ─── helper: full path for a FileList item ──────────────────────────────── }
-
-function TForm1.GetListItemPath(item: TListItem): string;
-var subdir: string;
-begin
-  subdir := '';
-  if item.SubItems.Count > 0 then subdir := item.SubItems[0];
-  if subdir <> '' then
-    Result := IncludeTrailingPathDelimiter(HomePath) +
-              IncludeTrailingPathDelimiter(subdir) + item.Caption
-  else
-    Result := IncludeTrailingPathDelimiter(HomePath) + item.Caption;
-end;
-
-{ ─── file browser: rebuild file tree ───────────────────────────────────── }
+{ ─── file browser: rebuild (sets shell tree root) ───────────────────────── }
 
 procedure TForm1.RebuildFileList;
-  procedure CollectFiles(const dir, relDir: string; results: TStringList);
-  var sr: TSearchRec;
-  begin
-    if FindFirst(dir + '*', faAnyFile, sr) = 0 then
-    begin
-      repeat
-        if (sr.Attr and faDirectory = 0) and
-           (ShowAllFiles or IsImageFile(sr.Name)) then
-          results.Add(relDir + sr.Name)
-        else if (sr.Attr and faDirectory <> 0) and
-                (sr.Name <> '.') and (sr.Name <> '..') then
-          CollectFiles(
-            IncludeTrailingPathDelimiter(dir + sr.Name),
-            relDir + sr.Name + PathDelim,
-            results);
-      until FindNext(sr) <> 0;
-      FindClose(sr);
-    end;
-  end;
-var
-  allFiles: TStringList;
-  i: integer; li: TListItem; relPath, relDir, fname: string;
 begin
-  FileList.Items.BeginUpdate;
-  FileList.Items.Clear;
   FilePreviewImg.Picture.Clear;
-  if (HomePath = '') or not DirectoryExists(HomePath) then
-  begin
-    FileList.Items.EndUpdate;
-    exit;
-  end;
-  allFiles := TStringList.Create;
-  try
-    allFiles.Sorted := True;
-    CollectFiles(IncludeTrailingPathDelimiter(HomePath), '', allFiles);
-    for i := 0 to allFiles.Count - 1 do
-    begin
-      relPath := allFiles[i];
-      fname   := ExtractFileName(relPath);
-      relDir  := ExcludeTrailingPathDelimiter(ExtractFilePath(relPath));
-      li := FileList.Items.Add;
-      li.Caption := fname;
-      li.SubItems.Add(relDir);
-      li.SubItems.Add(LowerCase(ExtractFileExt(fname)));
-      if IsImageFile(fname) then li.ImageIndex := 1 else li.ImageIndex := 0;
-    end;
-  finally
-    allFiles.Free;
-  end;
-  FileList.Items.EndUpdate;
+  if (HomePath <> '') and DirectoryExists(HomePath) then
+    FileTree.Root := IncludeTrailingPathDelimiter(HomePath);
 end;
 
-{ ─── file browser: click → preview image ───────────────────────────────── }
+{ ─── file browser: selection → preview image ────────────────────────────── }
 
-procedure TForm1.FileListClick(Sender: TObject);
-var item: TListItem; path: string;
+procedure TForm1.FileTreeSelChange(Sender: TObject; Item: TListItem; Selected: Boolean);
+var path: string;
 begin
-  item := FileList.Selected;
-  if item = nil then exit;
-  path := GetListItemPath(item);
-  if not FileExists(path) or not IsImageFile(path) then exit;
+  if not Selected or (Item = nil) then exit;
+  path := FileTree.GetPathFromItem(Item);
+  if not FileExists(path) or not IsImageFile(path) then
+  begin
+    FilePreviewImg.Picture.Clear;
+    exit;
+  end;
   try
     FilePreviewImg.Picture.LoadFromFile(path);
   except
@@ -2373,31 +2320,59 @@ begin
 end;
 
 procedure TForm1.FileListDblClick(Sender: TObject);
-var item: TListItem; path: string;
+var item: TShellListItem; path: string;
 begin
-  item := FileList.Selected;
-  if item = nil then exit;
-  path := GetListItemPath(item);
-  if FileExists(path) then InsertFigureFromFile(path, True);
+  if FileTree.Selected = nil then exit;
+  item := TShellListItem(FileTree.Selected);
+  if item.isFolder then
+  begin
+    path := FileTree.GetPathFromItem(item);
+    FileTree.Root := path;
+  end;
 end;
 
-{ ─── file browser: popup menu handlers ─────────────────────────────────── }
+{ ─── file browser: home button ──────────────────────────────────────────── }
+
+procedure TForm1.FileTreeHomeClick(Sender: TObject);
+begin
+  if (HomePath <> '') and DirectoryExists(HomePath) then
+    FileTree.Root := IncludeTrailingPathDelimiter(HomePath);
+end;
+
+procedure TForm1.FileTreeUpClick(Sender: TObject);
+var upDir: string;
+begin
+  upDir := ExtractFileDir(ExcludeTrailingPathDelimiter(FileTree.Root));
+  if (upDir <> '') and DirectoryExists(upDir) then
+    FileTree.Root := IncludeTrailingPathDelimiter(upDir);
+end;
+
+{ ─── file browser: filter combo ─────────────────────────────────────────── }
+
+procedure TForm1.FilterComboChange(Sender: TObject);
+begin
+  case FileFilterCombo.ItemIndex of
+    1: FileTree.Mask := '';
+    2: FileTree.Mask := '*.xml';
+    else FileTree.Mask := '*.jpg;*.jpeg;*.png;*.gif;*.bmp;*.tif;*.tiff;*.webp';
+  end;
+end;
+
+{ ─── file browser: insert buttons / popup ───────────────────────────────── }
 
 procedure TForm1.FileInsertWithP(Sender: TObject);
-var item: TListItem; path: string;
+var path: string;
 begin
-  item := FileList.Selected;
-  if item = nil then exit;
-  path := GetListItemPath(item);
+  if FileTree.Selected = nil then exit;
+  path := FileTree.GetPathFromItem(FileTree.Selected);
   if FileExists(path) then InsertFigureFromFile(path, True);
 end;
 
 procedure TForm1.FileInsertWithoutP(Sender: TObject);
-var item: TListItem; path: string;
+var path: string;
 begin
-  item := FileList.Selected;
-  if item = nil then exit;
-  path := GetListItemPath(item);
+  if FileTree.Selected = nil then exit;
+  path := FileTree.GetPathFromItem(FileTree.Selected);
   if FileExists(path) then InsertFigureFromFile(path, False);
 end;
 
@@ -2420,16 +2395,6 @@ begin
   else
     Ed.SelText := figTag;
   RecordChange('<figure>');
-end;
-
-{ ─── file filter toggle ─────────────────────────────────────────────────── }
-
-procedure TForm1.ToggleFileFilterClick(Sender: TObject);
-begin
-  ShowAllFiles := not ShowAllFiles;
-  if Sender is TSpeedButton then
-    (Sender as TSpeedButton).Down := ShowAllFiles;
-  RebuildFileList;
 end;
 
 { ─── right panel toggle ─────────────────────────────────────────────────── }
@@ -2457,19 +2422,18 @@ begin TreeView1.FullCollapse; end;
 procedure TForm1.SynEditDragOver(Sender, Source: TObject; X, Y: Integer;
   State: TDragState; var Accept: Boolean);
 begin
-  Accept := (Source = FileList);
+  Accept := (Source = FileTree) and (FileTree.Selected <> nil) and
+            FileExists(FileTree.GetPathFromItem(FileTree.Selected));
 end;
 
 procedure TForm1.SynEditDragDrop(Sender, Source: TObject; X, Y: Integer);
-var item: TListItem; path: string; syn: TSynEdit; row: integer;
+var path: string; syn: TSynEdit; row: integer;
 begin
-  if Source <> FileList then exit;
-  item := FileList.Selected;
-  if item = nil then exit;
-  path := GetListItemPath(item);
+  if Source <> FileTree then exit;
+  if FileTree.Selected = nil then exit;
+  path := FileTree.GetPathFromItem(FileTree.Selected);
   if not FileExists(path) then exit;
   syn := Sender as TSynEdit;
-  { Move caret to the drop position before inserting }
   if syn.LineHeight > 0 then
   begin
     row := syn.TopLine + Y div syn.LineHeight;
@@ -2493,26 +2457,48 @@ begin
   syn := Sender as TSynEdit;
   if syn.LineHeight <= 0 then exit;
   lineNo := syn.TopLine + Y div syn.LineHeight;
+
+  { Mouse still on the same line with popup already shown — nothing to do }
   if (lineNo = HoverLastLine) and (syn = HoverLastSyn) and HoverPopup.Visible then exit;
+
+  { Mouse moved off the current hover line — cancel any pending load }
+  HoverTimer.Enabled := False;
+  if lineNo <> HoverLastLine then
+    HoverPopup.Visible := False;
+
   HoverLastLine := lineNo;
   HoverLastSyn  := syn;
-  HoverPopup.Visible := False;
+
   if (lineNo < 1) or (lineNo > syn.Lines.Count) then exit;
   line := syn.Lines[lineNo - 1];
-  if (pos('<figure', line) = 0) and (pos('src=', line) = 0) then exit;
+  if (pos('<figure', line) = 0) or (pos('src=', line) = 0) then exit;
   srcVal := ExtractAttr(line, 'src');
   if srcVal = '' then exit;
   imgPath := srcVal;
-  if not FileExists(imgPath) then
-  begin
-    if HomePath <> '' then
-      imgPath := IncludeTrailingPathDelimiter(HomePath) + srcVal;
-  end;
+  if not FileExists(imgPath) and (HomePath <> '') then
+    imgPath := IncludeTrailingPathDelimiter(HomePath) + srcVal;
   if not FileExists(imgPath) or not IsImageFile(imgPath) then exit;
+
+  { Store screen position for use when timer fires }
+  pt := syn.ClientToScreen(Point(X, Y));
+  HoverPendingPath := imgPath;
+  HoverPendingPt   := pt;
+  HoverTimer.Enabled := True;
+end;
+
+procedure TForm1.HoverTimerTick(Sender: TObject);
+var
+  pic: TPicture;
+  pt: TPoint;
+begin
+  HoverTimer.Enabled := False;
+  if HoverPendingPath = '' then exit;
+
+  pic := TPicture.Create;
   try
-    HoverImage.Picture.LoadFromFile(imgPath);
-    pt := syn.ClientToScreen(Point(X, Y));
-    pt := Self.ScreenToClient(pt);
+    pic.LoadFromFile(HoverPendingPath);
+    HoverImage.Picture.Assign(pic);
+    pt := Self.ScreenToClient(HoverPendingPt);
     HoverPopup.Left := pt.X + 16;
     HoverPopup.Top  := pt.Y - HoverPopup.Height - 4;
     if HoverPopup.Top < 0 then HoverPopup.Top := pt.Y + 16;
@@ -2523,6 +2509,8 @@ begin
   except
     HoverPopup.Visible := False;
   end;
+  pic.Free;
+  HoverPendingPath := '';
 end;
 
 end.
